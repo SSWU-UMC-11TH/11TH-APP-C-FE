@@ -36,5 +36,6 @@ abstract final class AppTheme {
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
     ),
+    
   );
 }
