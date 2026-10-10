@@ -25,7 +25,7 @@ class MovieCard extends StatelessWidget {
                   child: Image.asset(
                     movie.posterAsset,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       color: Colors.grey.shade300,
                       child: const Icon(Icons.broken_image),
                     ),
