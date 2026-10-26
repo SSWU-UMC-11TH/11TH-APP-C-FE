@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
-
-import '../data/mock_movie.dart';
-import '../widgets/movie__rating_input.dart';
+import 'package:movielog/data/models/tmdb_movie_dto.dart';
+import 'package:movielog/widgets/movie_rating_input.dart';
+import 'package:movielog/widgets/tmdb_poster_image.dart';
 
 class MovieDetailScreen extends StatefulWidget {
-  final String movieId;
+  final int movieId;
+  final TmdbMovieDto? movie;
 
-  const MovieDetailScreen({super.key, required this.movieId});
+  const MovieDetailScreen({super.key, required this.movieId, this.movie});
 
   @override
   State<MovieDetailScreen> createState() => _MovieDetailScreenState();
@@ -21,7 +22,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     setState(() => isFavorite = !isFavorite);
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(isFavorite ? '즐겨찾기에 추가했어요' : '즐겨찾기에서 삭제했어요')),
+      SnackBar(
+        content: Text(isFavorite ? '즐겨찾기에 추가했어요' : '즐겨찾기에서 삭제했어요'),
+      ),
     );
   }
 
@@ -53,14 +56,27 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       },
     );
 
-    if (result != null) {
+    if (result != null && mounted) {
+      // TODO(5주차 유저별 평점 조회 API): widget.movieId와 함께 평점을 전송
       setState(() => myRating = result);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final movie = findMovieById(widget.movieId);
+    final movie = widget.movie;
+
+    if (movie == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(
+          child: Text(
+            '영화 정보를 불러오지 못했어요.\n(영화 ID: ${widget.movieId})',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(movie.title)),
@@ -69,44 +85,41 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 240,
-              width: double.infinity,
-              child: Image.asset(
-                movie.posterAsset,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: Colors.grey.shade300,
-                  child: const Icon(Icons.broken_image, size: 48),
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: TmdbPosterImage(
+                posterPath: movie.posterPath,
+                width: double.infinity,
+                height: 360,
               ),
             ),
             const SizedBox(height: 16),
-            Text(movie.title, style: Theme.of(context).textTheme.headlineSmall),
-            Text('${movie.year} · ${movie.genre}'),
+            Text(movie.title,
+                style: Theme.of(context).textTheme.headlineSmall),
+            if (movie.releaseYear != null) Text(movie.releaseYear!),
             const SizedBox(height: 12),
-
-            // 평균 평점 (읽기 전용)
             Row(
               children: [
                 RatingBarIndicator(
-                  rating: 4.5,
+                  rating: movie.voteAverage / 2, // TMDB 10점 만점 → 5점 만점
                   itemCount: 5,
                   itemSize: 24,
                   itemBuilder: (context, index) =>
                       const Icon(Icons.star, color: Colors.amber),
                 ),
                 const SizedBox(width: 8),
-                const Text('4.5'),
+                Text(movie.voteAverage.toStringAsFixed(1)),
               ],
             ),
-
-            // 내가 남긴 평점
             if (myRating > 0) ...[
               const SizedBox(height: 8),
               Text('내 평점: $myRating'),
             ],
-
+            const SizedBox(height: 16),
+            if (movie.overview.isEmpty)
+              const Center(child: Text('줄거리 정보가 없어요.'))
+            else
+              Text(movie.overview),
             const SizedBox(height: 24),
             Row(
               children: [
@@ -114,8 +127,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _toggleFavorite,
                     icon: Icon(
-                      isFavorite ? Icons.bookmark : Icons.bookmark_border,
-                    ),
+                        isFavorite ? Icons.bookmark : Icons.bookmark_border),
                     label: const Text('즐겨찾기'),
                   ),
                 ),
