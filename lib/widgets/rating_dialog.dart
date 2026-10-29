@@ -4,8 +4,15 @@ import 'movie_rating_input.dart';
 
 /// 별점을 고르는 커스텀 Dialog. 확인을 누르면 선택한 별점을 돌려줍니다.
 class RatingDialog extends StatefulWidget {
-  const RatingDialog({super.key, this.initialRating = 0});
+  const RatingDialog({
+    super.key,
+    required this.movieId,
+    this.initialRating = 0,
+  });
 
+  /// TMDB 영화 id (`TmdbMovieDto.id`).
+  /// 평점 저장 API를 연결하면 이 값을 그대로 `CreateRatingRequest.movieId`로 보냅니다.
+  final int movieId;
   final double initialRating;
 
   @override
@@ -50,6 +57,7 @@ class _RatingDialogState extends State<RatingDialog> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
+                    // TODO(평점 API): widget.movieId와 _rating으로 평점 저장 요청
                     onPressed: _rating == 0
                         ? null
                         : () => Navigator.pop(context, _rating),
