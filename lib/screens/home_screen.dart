@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/movie.dart';
+import '../widgets/common_app_bar.dart';
 import '../widgets/movie_card.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -13,7 +14,7 @@ class HomeScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('MovieLog')),
+      appBar: const CommonAppBar(title: 'MovieLog'),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16),
         children: [

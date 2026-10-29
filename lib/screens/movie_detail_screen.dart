@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:go_router/go_router.dart';
 
 import '../data/movie.dart';
 import '../theme/app_colors.dart';
+import '../widgets/common_app_bar.dart';
 import '../widgets/rating_dialog.dart';
 
 class MovieDetailScreen extends StatefulWidget {
@@ -54,7 +56,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
     if (movie == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: CommonAppBar(title: '영화 상세', onBack: () => context.pop()),
         body: const Center(child: Text('영화를 찾을 수 없어요.')),
       );
     }
@@ -62,8 +64,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(movie.title),
+      appBar: CommonAppBar(
+        title: movie.title,
+        // push로 쌓인 화면이므로 pop으로 이전 화면(홈/목록)으로 돌아갑니다.
+        onBack: () => context.pop(),
         actions: [
           IconButton(
             onPressed: _toggleFavorite,
@@ -115,14 +119,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           ],
           ElevatedButton(
             onPressed: _openRatingDialog,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
             child: Text(_myRating == null ? '평점 남기기' : '평점 수정하기'),
           ),
         ],
