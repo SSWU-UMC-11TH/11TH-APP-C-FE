@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import 'movielog_button.dart';
 
 /// Loading 상태: 빈 화면 대신 진행 상태를 보여줍니다.
 class MovieListLoading extends StatelessWidget {
@@ -61,9 +62,11 @@ class MovieListError extends StatelessWidget {
               style: AppTextStyles.bodyMedium,
             ),
             const SizedBox(height: 16),
-            FilledButton(
+            // 공용 버튼의 고정 너비 예시: 항상 같은 크기(120)를 사용합니다.
+            MovieLogButton(
+              label: '다시 시도',
+              width: 120,
               onPressed: onRetry,
-              child: const Text('다시 시도'),
             ),
           ],
         ),

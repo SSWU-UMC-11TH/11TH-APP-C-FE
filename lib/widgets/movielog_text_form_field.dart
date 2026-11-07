@@ -18,6 +18,8 @@ class MovieLogTextFormField extends StatefulWidget {
     this.onChanged,
     this.onFieldSubmitted,
     this.isPassword = false,
+    this.errorText,
+    this.suffixIcon,
   });
 
   final TextEditingController controller;
@@ -31,6 +33,13 @@ class MovieLogTextFormField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onFieldSubmitted;
   final bool isPassword;
+
+  /// 서버 검증 결과처럼 validator 밖에서 정해지는 에러 문구.
+  /// null이 아니면 validator가 통과해도 입력창이 빨간 에러 상태로 보입니다.
+  final String? errorText;
+
+  /// 입력창 오른쪽 아이콘 (비밀번호 칸이 아닐 때만 사용)
+  final Widget? suffixIcon;
 
   @override
   State<MovieLogTextFormField> createState() => _MovieLogTextFormFieldState();
@@ -63,6 +72,7 @@ class _MovieLogTextFormFieldState extends State<MovieLogTextFormField> {
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hint,
+        errorText: widget.errorText,
         prefixIcon: Icon(widget.prefixIcon),
         suffixIcon: widget.isPassword
             ? IconButton(
@@ -74,7 +84,7 @@ class _MovieLogTextFormFieldState extends State<MovieLogTextFormField> {
                 ),
                 tooltip: _obscured ? '비밀번호 보기' : '비밀번호 숨기기',
               )
-            : null,
+            : widget.suffixIcon,
         enabledBorder: _border(AppColors.inputBorder),
         focusedBorder: _border(AppColors.primary, 2),
         errorBorder: _border(AppColors.error),

@@ -58,4 +58,14 @@ class TmdbMovieService {
     );
     return TmdbMovieDto.fromJson(response.data ?? const {});
   }
+
+  /// TMDB에 없는 영화(404)만 null로 바꾸고, 다른 네트워크 오류는 그대로 던집니다.
+  Future<TmdbMovieDto?> findMovieById(int movieId) async {
+    try {
+      return await fetchMovieDetail(movieId);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
 }

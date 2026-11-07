@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -40,7 +41,9 @@ class MyPageScreen extends StatelessWidget {
             ProfileStats(stats: _profileStats),
             SizedBox(height: 32),
             FavoriteGenres(genres: _favoriteGenres),
-            SizedBox(height: 32),
+            SizedBox(height: 24),
+            MyRatingsEntryTile(),
+            SizedBox(height: 24),
             EditProfileButton(),
           ],
         ),
@@ -209,6 +212,30 @@ class EditProfileButton extends StatelessWidget {
     return ElevatedButton(
       onPressed: () {},
       child: const Text('프로필 수정'),
+    );
+  }
+}
+
+/// 마이페이지 → "내가 등록한 평점" 자식 화면으로 들어가는 행
+class MyRatingsEntryTile extends StatelessWidget {
+  const MyRatingsEntryTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: AppColors.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        leading: const Icon(Icons.star_outline, color: AppColors.primary),
+        title: const Text('내가 등록한 평점', style: AppTextStyles.titleMedium),
+        trailing: const Icon(Icons.chevron_right),
+        // push: 마이페이지 위에 쌓여서 뒤로가면 마이페이지로 돌아옵니다.
+        onTap: () => context.push('/my/ratings'),
+      ),
     );
   }
 }

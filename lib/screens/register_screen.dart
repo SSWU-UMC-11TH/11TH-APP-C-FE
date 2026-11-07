@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../view_models/sign_up_view_model.dart';
 import '../widgets/common_app_bar.dart';
+import '../widgets/movielog_button.dart';
 import '../widgets/movielog_text_form_field.dart';
 
 /// 회원가입 입력값 검증 규칙. validator는 오류면 문구, 통과면 null을 반환합니다.
@@ -61,20 +64,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  /// 버튼 활성화용 빠른 검사. 최종 검증은 제출할 때 validate()로 다시 합니다.
-  bool get _canSubmit =>
+  /// 형식 검사(로컬) + 서버 중복 확인 + 약관 동의가 모두 끝나야 가입할 수 있습니다.
+  bool _canSubmit(SignUpViewModel viewModel) =>
       SignUpValidators.nickname(_nicknameController.text) == null &&
       SignUpValidators.email(_emailController.text) == null &&
       SignUpValidators.password(_passwordController.text) == null &&
-      _agreedToTerms;
-
-  void _onInputChanged(String _) => setState(() {});
+      _agreedToTerms &&
+      viewModel.isAllAvailable;
 
   void _submit() {
     final isValid = _formKey.currentState?.validate() ?? false;
-    if (!isValid || !_agreedToTerms) return;
+    if (!isValid || !_canSubmit(context.read<SignUpViewModel>())) return;
 
     FocusScope.of(context).unfocus();
+    // 회원가입 POST는 v6부터라 이번 주차에는 요청 없이 홈으로 이동합니다.
     // go: 회원가입 화면을 없애고 홈으로 이동 → 뒤로가기로 돌아오지 않음
     context.go('/home');
   }
@@ -99,66 +102,114 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ScrollViewKeyboardDismissBehavior.onDrag,
                   child: Form(
                     key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const RegisterHeader(),
-                        const SizedBox(height: 32),
-                        MovieLogTextFormField(
-                          controller: _nicknameController,
-                          label: '닉네임',
-                          hint: '두 글자 이상 입력',
-                          prefixIcon: Icons.person_outline,
-                          textInputAction: TextInputAction.next,
-                          validator: SignUpValidators.nickname,
-                          onChanged: _onInputChanged,
-                          onFieldSubmitted: (_) =>
-                              _emailFocusNode.requestFocus(),
-                        ),
-                        const SizedBox(height: 16),
-                        MovieLogTextFormField(
-                          controller: _emailController,
-                          focusNode: _emailFocusNode,
-                          label: '이메일',
-                          hint: 'movie@example.com',
-                          prefixIcon: Icons.mail_outline,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          validator: SignUpValidators.email,
-                          onChanged: _onInputChanged,
-                          onFieldSubmitted: (_) =>
-                              _passwordFocusNode.requestFocus(),
-                        ),
-                        const SizedBox(height: 16),
-                        MovieLogTextFormField(
-                          controller: _passwordController,
-                          focusNode: _passwordFocusNode,
-                          label: '비밀번호',
-                          hint: '8자 이상 입력',
-                          prefixIcon: Icons.lock_outline,
-                          isPassword: true,
-                          textInputAction: TextInputAction.done,
-                          validator: SignUpValidators.password,
-                          onChanged: _onInputChanged,
-                          // 키보드 완료 버튼 → 키보드 닫기
-                          onFieldSubmitted: (_) =>
-                              FocusScope.of(context).unfocus(),
-                        ),
-                        const SizedBox(height: 16),
-                        TermsAgreement(
-                          agreed: _agreedToTerms,
-                          onChanged: (value) {
-                            setState(() {
-                              _agreedToTerms = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 32),
-                        RegisterSubmitButton(
-                          // null이면 버튼이 비활성화됩니다.
-                          onPressed: _canSubmit ? _submit : null,
-                        ),
-                      ],
+                    // 중복 확인 상태가 바뀔 때 Form 영역만 다시 그립니다.
+                    child: Consumer<SignUpViewModel>(
+                      builder: (context, viewModel, child) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const RegisterHeader(),
+                            const SizedBox(height: 32),
+                            DuplicateCheckRow(
+                              status: viewModel.nicknameCheckStatus,
+                              availableMessage: '사용할 수 있는 닉네임입니다.',
+                              // 형식이 맞고, 확인 가능한 상태일 때만 누를 수 있습니다.
+                              onCheck: viewModel.canCheckNickname &&
+                                      SignUpValidators.nickname(
+                                            _nicknameController.text,
+                                          ) ==
+                                          null
+                                  ? () => viewModel
+                                      .checkNickname(_nicknameController.text)
+                                  : null,
+                              field: MovieLogTextFormField(
+                                controller: _nicknameController,
+                                label: '닉네임',
+                                hint: '두 글자 이상 입력',
+                                prefixIcon: Icons.person_outline,
+                                textInputAction: TextInputAction.next,
+                                validator: SignUpValidators.nickname,
+                                // 서버 결과(중복·통신 실패)를 입력창 에러로 연결
+                                errorText: viewModel.nicknameErrorText,
+                                suffixIcon: _checkMark(
+                                  viewModel.nicknameCheckStatus,
+                                ),
+                                onChanged: (value) {
+                                  viewModel.onNicknameChanged(value);
+                                  setState(() {});
+                                },
+                                onFieldSubmitted: (_) =>
+                                    _emailFocusNode.requestFocus(),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            DuplicateCheckRow(
+                              status: viewModel.emailCheckStatus,
+                              availableMessage: '사용할 수 있는 이메일입니다.',
+                              onCheck: viewModel.canCheckEmail &&
+                                      SignUpValidators.email(
+                                            _emailController.text,
+                                          ) ==
+                                          null
+                                  ? () => viewModel
+                                      .checkEmail(_emailController.text)
+                                  : null,
+                              field: MovieLogTextFormField(
+                                controller: _emailController,
+                                focusNode: _emailFocusNode,
+                                label: '이메일',
+                                hint: 'movie@example.com',
+                                prefixIcon: Icons.mail_outline,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                validator: SignUpValidators.email,
+                                errorText: viewModel.emailErrorText,
+                                suffixIcon: _checkMark(
+                                  viewModel.emailCheckStatus,
+                                ),
+                                onChanged: (value) {
+                                  viewModel.onEmailChanged(value);
+                                  setState(() {});
+                                },
+                                onFieldSubmitted: (_) =>
+                                    _passwordFocusNode.requestFocus(),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            MovieLogTextFormField(
+                              controller: _passwordController,
+                              focusNode: _passwordFocusNode,
+                              label: '비밀번호',
+                              hint: '8자 이상 입력',
+                              prefixIcon: Icons.lock_outline,
+                              isPassword: true,
+                              textInputAction: TextInputAction.done,
+                              validator: SignUpValidators.password,
+                              onChanged: (_) => setState(() {}),
+                              // 키보드 완료 버튼 → 키보드 닫기
+                              onFieldSubmitted: (_) =>
+                                  FocusScope.of(context).unfocus(),
+                            ),
+                            const SizedBox(height: 16),
+                            TermsAgreement(
+                              agreed: _agreedToTerms,
+                              onChanged: (value) {
+                                setState(() {
+                                  _agreedToTerms = value;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 32),
+                            // Form 하단 버튼: 부모 최대 너비(double.infinity)
+                            MovieLogButton(
+                              label: '가입하기',
+                              width: double.infinity,
+                              onPressed:
+                                  _canSubmit(viewModel) ? _submit : null,
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -167,6 +218,66 @@ class _RegisterScreenState extends State<RegisterScreen> {
           },
         ),
       ),
+    );
+  }
+
+  /// 사용 가능으로 확인되면 입력창 안쪽에만 체크 표시를 둡니다.
+  Widget? _checkMark(CheckStatus status) {
+    if (status != CheckStatus.available) return null;
+    return const Icon(Icons.check_circle, color: AppColors.primary);
+  }
+}
+
+/// 입력창 + 중복 확인 버튼(Row의 형제, 8px 간격) + 사용 가능 안내 문구
+class DuplicateCheckRow extends StatelessWidget {
+  const DuplicateCheckRow({
+    super.key,
+    required this.field,
+    required this.status,
+    required this.onCheck,
+    required this.availableMessage,
+  });
+
+  final Widget field;
+  final CheckStatus status;
+
+  /// null이면 버튼 비활성화
+  final VoidCallback? onCheck;
+  final String availableMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: field),
+            const SizedBox(width: 8),
+            // 입력창 옆 보조 버튼: width를 주지 않아 내용 기반 크기(null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: MovieLogButton(
+                label: '중복 확인',
+                isLoading: status == CheckStatus.checking,
+                onPressed: onCheck,
+              ),
+            ),
+          ],
+        ),
+        // 중복·통신 실패 문구는 입력창 errorText로, 사용 가능 문구만 여기에 표시합니다.
+        if (status == CheckStatus.available)
+          Padding(
+            padding: const EdgeInsets.only(left: 12, top: 6),
+            child: Text(
+              availableMessage,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -219,27 +330,6 @@ class TermsAgreement extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class RegisterSubmitButton extends StatelessWidget {
-  const RegisterSubmitButton({super.key, required this.onPressed});
-
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    // 활성화·비활성화 색상은 AppTheme의 elevatedButtonTheme에서 지정합니다.
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        minimumSize: const Size.fromHeight(56),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-      ),
-      child: const Text('회원가입'),
     );
   }
 }
