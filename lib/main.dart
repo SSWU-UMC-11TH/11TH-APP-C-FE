@@ -1,26 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:movielog/core/network/movie_log_client.dart';
+import 'package:movielog/core/network/tmdb_client.dart';
+import 'package:movielog/data/service/rating_api_service.dart';
+import 'package:movielog/data/service/sign_up_service.dart';
+import 'package:movielog/data/service/tmdb_movie_service.dart';
+import 'package:movielog/router/app_router.dart';
+import 'package:movielog/theme/app_theme.dart';
+import 'package:movielog/view_models/learning_member_session.dart';
+import 'package:provider/provider.dart';
 
-class Movie {
-  String title;
-  
-  Movie(this.title);
-}
-
-
-void main() {
-  List<Movie> movies = [
-  Movie('인셉션'),
-  Movie('옵세션'),
-  Movie('아바타'),
-];
-
-  for (var movie in movies) {
-    print(movie.title);
-  } 
-
-  String? nickName;
-  String safeName = nickName ?? '손님';
-
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   runApp(const MovieLogApp());
 }
 
@@ -29,106 +21,29 @@ class MovieLogApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'MovieLog',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.white),
-        useMaterial3: true,
-      ),
-      home: const StartScreen(),
-    );
-  }
-}
+    final movieLogClient = createMovieLogClient();
 
-class StartScreen extends StatelessWidget {
-  const StartScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Center(
-        child: Column(
-          // mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(height: 64),
-            const Text(
-              'FLUTTER 1주차',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF494551),
-                fontWeight: FontWeight(500),
-
-              ),
-            ),
-            SizedBox(height: 64),
-            const Icon(
-              Icons.movie_outlined,
-              size: 80,
-              color: Colors.deepPurple,
-              semanticLabel: '영화 아이콘',
-            ),
-            const SizedBox(height: 72), 
-
-            const Text(
-              '영화의 순간을\n기록하세요',
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF1B1C1A)
-              ),
-              
-            ),
-            const SizedBox(height: 8), 
-
-            const Text(
-              '보고 싶은 영화부터 나만의 평점까지\n한곳에서 관리해요',
-               textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF494551),
-              ),
-            ),
-          Spacer(),
-          SizedBox(
-            width: 326,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: () {
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F378A),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text(
-                '시작하기',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                ),
-            ),
+    return MultiProvider(
+      providers: [
+        Provider<TmdbMovieService>(
+          create: (_) => TmdbMovieService(createTmdbClient()),
         ),
-            SizedBox(height: 56),
-          ],
+        Provider<SignUpService>(
+          create: (_) => SignUpService(movieLogClient),
         ),
-      ),
-      ),
+        Provider<RatingApiService>(
+          create: (_) => RatingApiService(movieLogClient),
+        ),
+        ChangeNotifierProvider<LearningMemberSession>(
+          create: (_) => LearningMemberSession(),
+        ),
+      ],
+      child: MaterialApp.router(
+        debugShowCheckedModeBanner: false,
+        title: 'MovieLog',
+        theme: AppTheme.light, // 기존 테마 코드 그대로
+        routerConfig: AppRouter.router,
       ),
     );
   }
 }
-
