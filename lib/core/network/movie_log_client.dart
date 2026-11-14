@@ -18,6 +18,8 @@ Dio createMovieLogClient() {
     dio.interceptors.add(
       LogInterceptor(
         requestHeader: false,
+        // 회원가입 요청 body에는 비밀번호가 있으므로 요청 body는 절대 출력하지 않습니다.
+        requestBody: false,
         responseHeader: false,
         responseBody: true,
         logPrint: (log) => debugPrint('[MovieLog API] $log'),

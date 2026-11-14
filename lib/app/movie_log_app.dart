@@ -3,11 +3,12 @@ import 'package:provider/provider.dart';
 
 import '../core/network/movie_log_client.dart';
 import '../core/network/tmdb_client.dart';
-import '../data/services/member_check_service.dart';
 import '../data/services/rating_api_service.dart';
+import '../data/services/sign_up_service.dart';
 import '../data/services/tmdb_movie_service.dart';
 import '../router/app_router.dart';
 import '../theme/app_theme.dart';
+import '../view_models/learning_member_session.dart';
 
 class MovieLogApp extends StatelessWidget {
   const MovieLogApp({super.key});
@@ -25,11 +26,15 @@ class MovieLogApp extends StatelessWidget {
         Provider<TmdbMovieService>(
           create: (_) => TmdbMovieService(createTmdbClient()),
         ),
-        Provider<MemberCheckService>(
-          create: (_) => MemberCheckService(movieLogClient),
+        Provider<SignUpService>(
+          create: (_) => SignUpService(movieLogClient),
         ),
         Provider<RatingApiService>(
           create: (_) => RatingApiService(movieLogClient),
+        ),
+        // 회원가입으로 얻은 학습용 memberId를 회원가입·영화 상세·내 평점 화면이 함께 씁니다.
+        ChangeNotifierProvider<LearningMemberSession>(
+          create: (_) => LearningMemberSession(),
         ),
       ],
       child: MaterialApp.router(

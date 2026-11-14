@@ -1,18 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/errors/user_facing_exception.dart';
 import '../data/models/rating_with_movie.dart';
 import '../data/models/tmdb_movie_dto.dart';
 import '../data/services/rating_api_service.dart';
 import '../data/services/tmdb_movie_service.dart';
 
-/// 로그인 기능이 없는 6주차에는 학습용 memberId 1의 공개 평점을 조회합니다.
-/// (인증된 '내 계정'이 아닙니다. JWT 주차에서 바뀝니다.)
-const int sampleMemberId = 1;
-
 enum MyRatingsLoadStatus { idle, loading, success, empty, error }
 
-/// "내가 등록한 평점" 화면 전용 ViewModel.
+/// "내가 등록한 평점" 화면 전용 ViewModel (조회·수정·삭제).
 /// 자체 백엔드에서 평점을 받고, movieId(TMDB id)로 영화 제목·포스터를 붙입니다.
 class MyRatingsViewModel extends ChangeNotifier {
   MyRatingsViewModel(this._service, this._movieService, this.memberId);
@@ -20,9 +17,9 @@ class MyRatingsViewModel extends ChangeNotifier {
   final RatingApiService _service;
   final TmdbMovieService _movieService;
 
-  /// 조회 대상 회원. 기본은 [sampleMemberId]이고,
-  /// debug 모드에서만 Empty·Error 확인용으로 바꿀 수 있습니다.
-  int memberId;
+  /// 회원가입 결과로 받은 학습용 memberId (LearningMemberSession에서 전달).
+  /// 로그인 인증이 아닙니다. JWT 주차에서 토큰으로 바뀝니다.
+  final int memberId;
 
   /// 같은 movieId는 TMDB에 한 번만 묻습니다. (null = TMDB에 없는 영화)
   final Map<int, TmdbMovieDto?> _movieCache = {};
@@ -32,6 +29,10 @@ class MyRatingsViewModel extends ChangeNotifier {
   List<RatingWithMovie> ratings = const [];
   MyRatingsLoadStatus status = MyRatingsLoadStatus.idle;
   String? message;
+
+  /// 저장(수정·삭제)은 성공했지만 직후 GET 재조회가 실패했을 때의 안내.
+  /// 저장 실패와 구분하기 위해 message와 따로 둡니다.
+  String? refreshWarning;
 
   bool _isStale(int version) => _disposed || version != _requestVersion;
 
@@ -65,6 +66,7 @@ class MyRatingsViewModel extends ChangeNotifier {
       if (_isStale(version)) return;
 
       ratings = entries;
+      refreshWarning = null; // 조회가 성공하면 재조회 안내도 지웁니다.
       // 빈 배열은 실패가 아니라 Empty 상태입니다.
       status = entries.isEmpty
           ? MyRatingsLoadStatus.empty
@@ -87,10 +89,60 @@ class MyRatingsViewModel extends ChangeNotifier {
     if (!_isStale(version)) notifyListeners();
   }
 
-  /// debug 모드 전용: 다른 memberId로 Empty·Error 상태를 확인합니다.
-  Future<void> changeMemberIdForDebug(int id) {
-    memberId = id;
-    return load();
+  /// 쓰기 성공 뒤 목록을 서버 상태와 맞춥니다.
+  /// GET 실패는 저장 실패로 다시 던지지 않고 refreshWarning으로만 알립니다.
+  Future<void> _refreshAfterWrite() async {
+    await load();
+    if (_disposed) return;
+    if (status == MyRatingsLoadStatus.error) {
+      refreshWarning = '저장은 완료됐지만 목록을 불러오지 못했습니다. 조회만 다시 시도해 주세요.';
+      notifyListeners();
+    }
+  }
+
+  /// PATCH: score는 항상, comment는 유지/삭제 의도를 명시해서 보냅니다.
+  /// (comment를 빼면 기존 후기가 null로 덮입니다)
+  Future<void> updateRating({
+    required int ratingId,
+    required int score,
+    String? comment,
+  }) async {
+    try {
+      await _service.updateRating(
+        memberId: memberId,
+        ratingId: ratingId,
+        score: score,
+        comment: comment,
+      );
+    } on DioException catch (error) {
+      await _handleWriteError(error);
+    }
+    if (_disposed) return; // 화면을 떠난 뒤의 결과는 반영하지 않습니다.
+    await _refreshAfterWrite();
+  }
+
+  /// DELETE: 204는 body가 없으므로 파싱하지 않습니다.
+  Future<void> deleteRating(int ratingId) async {
+    try {
+      await _service.deleteRating(memberId: memberId, ratingId: ratingId);
+    } on DioException catch (error) {
+      await _handleWriteError(error);
+    }
+    if (_disposed) return;
+    // 마지막 항목을 지웠다면 load()가 빈 배열을 받아 Empty 상태가 됩니다.
+    await _refreshAfterWrite();
+  }
+
+  /// 쓰기 실패: 403(남의 평점)·404(평점 없음)는 목록이 서버와 어긋났다는 뜻이라 다시 조회하고,
+  /// 400·409는 재조회 없이 서버 message를 Dialog로 돌려보냅니다.
+  Future<Never> _handleWriteError(DioException error) async {
+    final message = writeErrorMessage(error);
+    debugPrint(
+      '[MyRatingsViewModel] 쓰기 실패 status=${error.response?.statusCode}',
+    );
+    if (!_disposed && shouldRefreshAfterRatingError(error)) await load();
+    // Dialog가 잡아서 문구를 보여주고 입력을 유지합니다.
+    throw UserFacingException(message);
   }
 
   @override

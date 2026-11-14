@@ -1,14 +1,17 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../core/errors/user_facing_exception.dart';
+import '../data/models/rating_dto.dart';
 import '../data/models/rating_with_movie.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../view_models/my_ratings_view_model.dart';
 import '../widgets/common_app_bar.dart';
 import '../widgets/movie_list_states.dart';
+import '../widgets/movielog_button.dart';
+import '../widgets/rating_dialog.dart';
 import '../widgets/tmdb_poster_image.dart';
 
 /// 마이페이지 → 내가 등록한 평점 (root Navigator 위에 열려 하단 탭이 보이지 않습니다)
@@ -22,18 +25,15 @@ class MyRatingsScreen extends StatelessWidget {
         title: '내가 등록한 평점',
         centerTitle: true,
         onBack: () => context.pop(),
-        actions: [
-          // Empty·Error 화면 확인용 메뉴는 개발(debug) 모드에서만 보입니다.
-          if (kDebugMode) const _DebugMemberMenu(),
-        ],
       ),
       body: Consumer<MyRatingsViewModel>(
         builder: (context, viewModel, child) {
           return switch (viewModel.status) {
             MyRatingsLoadStatus.idle ||
             MyRatingsLoadStatus.loading => const MovieListLoading(),
+            // 저장 성공 뒤 재조회만 실패했다면 그 사실을 따로 안내합니다.
             MyRatingsLoadStatus.error => MovieListError(
-                message: viewModel.message,
+                message: viewModel.refreshWarning ?? viewModel.message,
                 onRetry: () => context.read<MyRatingsViewModel>().load(),
               ),
             MyRatingsLoadStatus.empty =>
@@ -90,7 +90,7 @@ class _RatingList extends StatelessWidget {
   }
 }
 
-/// 평점 카드: TMDB 포스터·제목 + 점수 + 후기 + 등록일
+/// 평점 카드: TMDB 포스터·제목 + 점수 + 후기 + 등록일 + 오른쪽 수정·삭제 버튼
 class RatingCard extends StatelessWidget {
   const RatingCard({super.key, required this.entry});
 
@@ -170,6 +170,22 @@ class RatingCard extends StatelessWidget {
                 ],
               ),
             ),
+            Column(
+              children: [
+                IconButton(
+                  onPressed: () => onEditPressed(context, rating),
+                  icon: const Icon(Icons.edit_outlined),
+                  color: AppColors.primary,
+                  tooltip: '평점 수정',
+                ),
+                IconButton(
+                  onPressed: () => onDeletePressed(context, rating),
+                  icon: const Icon(Icons.delete_outline),
+                  color: AppColors.error,
+                  tooltip: '평점 삭제',
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -177,29 +193,121 @@ class RatingCard extends StatelessWidget {
   }
 }
 
-/// debug 전용: 조회 memberId를 바꿔 Empty·Error 상태를 확인합니다.
-class _DebugMemberMenu extends StatelessWidget {
-  const _DebugMemberMenu();
+/// 수정: 등록과 같은 RatingDialog를 기존 score/comment로 채워서 엽니다.
+/// (comment가 null이면 TextField는 빈 칸으로 시작합니다)
+Future<void> onEditPressed(BuildContext context, RatingDto rating) async {
+  final viewModel = context.read<MyRatingsViewModel>();
+  await showDialog<bool>(
+    context: context,
+    barrierDismissible: false, // 저장 중 바깥 탭으로 닫히는 것도 막습니다.
+    builder: (_) => RatingDialog(
+      initialScore: rating.score,
+      initialComment: rating.comment,
+      // 실패하면 updateRating이 UserFacingException을 던지고 Dialog가 문구를 보여줍니다.
+      onSubmit: (score, comment) => viewModel.updateRating(
+        ratingId: rating.ratingId,
+        score: score,
+        comment: comment,
+      ),
+    ),
+  );
+  // 성공하면 ViewModel이 이미 목록을 다시 조회했습니다.
+}
 
-  static const _memberIds = [1, 2, 3, 4, 5, 999999];
+/// 삭제: 확인 Dialog에서 "삭제"를 눌러야만 DELETE를 보냅니다. (취소 → 요청 없음)
+Future<void> onDeletePressed(BuildContext context, RatingDto rating) async {
+  final viewModel = context.read<MyRatingsViewModel>();
+  await showDialog<bool>(
+    context: context,
+    barrierDismissible: false, // 삭제 중 바깥 탭으로 닫히는 것도 막습니다.
+    builder: (_) => _DeleteRatingDialog(
+      onConfirm: () => viewModel.deleteRating(rating.ratingId),
+    ),
+  );
+  // 반환값 true는 실제로 삭제까지 마쳤을 때만입니다.
+}
+
+class _DeleteRatingDialog extends StatefulWidget {
+  const _DeleteRatingDialog({required this.onConfirm});
+
+  final Future<void> Function() onConfirm;
+
+  @override
+  State<_DeleteRatingDialog> createState() => _DeleteRatingDialogState();
+}
+
+class _DeleteRatingDialogState extends State<_DeleteRatingDialog> {
+  bool _isDeleting = false;
+  String? _errorText;
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.read<MyRatingsViewModel>();
-    return PopupMenuButton<int>(
-      tooltip: '조회 memberId 바꾸기 (debug)',
-      icon: const Icon(Icons.tune),
-      initialValue: viewModel.memberId,
-      onSelected: viewModel.changeMemberIdForDebug,
-      itemBuilder: (context) => [
-        for (final id in _memberIds)
-          PopupMenuItem(
-            value: id,
-            child: Text(
-              id == sampleMemberId ? 'memberId $id (기본)' : 'memberId $id',
+    return PopScope(
+      canPop: !_isDeleting,
+      child: AlertDialog(
+        backgroundColor: AppColors.white,
+        title: const Text(
+          '평점을 삭제할까요?',
+          style: AppTextStyles.titleLarge,
+          textAlign: TextAlign.center,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '삭제한 평점은 복구할 수 없습니다.',
+              style: AppTextStyles.bodyMedium,
+              textAlign: TextAlign.center,
             ),
+            if (_errorText != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _errorText!,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+              ),
+            ],
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          MovieLogButton(
+            label: '취소',
+            onPressed:
+                _isDeleting ? null : () => Navigator.pop(context, false),
           ),
-      ],
+          MovieLogButton(
+            label: '삭제',
+            isLoading: _isDeleting,
+            onPressed: _isDeleting ? null : _onConfirm,
+          ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _onConfirm() async {
+    setState(() {
+      _isDeleting = true;
+      _errorText = null;
+    });
+    try {
+      await widget.onConfirm();
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } on UserFacingException catch (error) {
+      // 403(남의 평점)·404(이미 없는 평점)를 서버 문구로 구별해 보여줍니다.
+      if (!mounted) return;
+      setState(() {
+        _isDeleting = false;
+        _errorText = error.message;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isDeleting = false;
+        _errorText = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+      });
+    }
   }
 }
