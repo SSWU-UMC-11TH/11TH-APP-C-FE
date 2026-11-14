@@ -4,8 +4,15 @@ import 'package:movielog/widgets/tmdb_poster_image.dart';
 
 class RatingCard extends StatelessWidget {
   final RatingWithMovie entry;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
-  const RatingCard({super.key, required this.entry});
+  const RatingCard({
+    super.key,
+    required this.entry,
+    this.onEdit,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +34,6 @@ class RatingCard extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            // movie가 null이거나 posterPath가 null이면 placeholder
             child: TmdbPosterImage(
               posterPath: movie?.posterPath,
               width: 80,
@@ -49,10 +55,9 @@ class RatingCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   '별점 ${rating.score} / 5',
-                  style: TextStyle(
-                      color: primary, fontWeight: FontWeight.w700),
+                  style:
+                      TextStyle(color: primary, fontWeight: FontWeight.w700),
                 ),
-                // comment가 null이면 표시하지 않음
                 if (comment != null && comment.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(comment),
@@ -62,6 +67,26 @@ class RatingCard extends StatelessWidget {
               ],
             ),
           ),
+          // 학습용 회원 본인의 평점에만 수정·삭제 표시
+          if (onEdit != null || onDelete != null)
+            Column(
+              children: [
+                if (onEdit != null)
+                  IconButton(
+                    tooltip: '수정',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onEdit,
+                    icon: Icon(Icons.edit_outlined, color: primary),
+                  ),
+                if (onDelete != null)
+                  IconButton(
+                    tooltip: '삭제',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  ),
+              ],
+            ),
         ],
       ),
     );
