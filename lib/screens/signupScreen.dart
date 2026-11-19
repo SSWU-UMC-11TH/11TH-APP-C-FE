@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:movielog/widgets/AppBar.dart';
 import 'package:movielog/theme/app_theme.dart';
+import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -85,7 +86,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-     
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -187,7 +187,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   width: double.infinity,
                                   height: 56,
                                   child: ElevatedButton(
-                                    onPressed: _isFormValid ? _onSubmit : null,
+                                    onPressed: _isFormValid
+                                        ? () => context.go('/home')
+                                        : null,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primary,
                                       disabledBackgroundColor: AppColors.primary
