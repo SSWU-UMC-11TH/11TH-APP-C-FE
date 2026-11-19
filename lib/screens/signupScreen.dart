@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:movielog/data/models/create_member_request.dart';
-import 'package:movielog/view_models/learning_member_session.dart';
 import 'package:movielog/view_models/sign_up_view_model.dart';
 import 'package:movielog/view_models/submit_status.dart';
 import 'package:movielog/widgets/movielog_button.dart';
@@ -23,7 +22,8 @@ bool _isValidNickname(String value) =>
 String? validatePasswordFormat(String? value) {
   if (value == null || value.isEmpty) return '비밀번호를 입력해주세요.';
   if (value.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
-  final ok = RegExp(r'[a-z]').hasMatch(value) &&
+  final ok =
+      RegExp(r'[a-z]').hasMatch(value) &&
       RegExp(r'[A-Z]').hasMatch(value) &&
       RegExp(r'[0-9]').hasMatch(value) &&
       RegExp(r'[!@#$%^&*]').hasMatch(value);
@@ -69,7 +69,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _validateForm() {
-    final isValid = _isValidNickname(_nicknameController.text) &&
+    final isValid =
+        _isValidNickname(_nicknameController.text) &&
         _isValidEmail(_emailController.text.trim()) &&
         validatePasswordFormat(_passwordController.text) == null &&
         _agreedToTerms;
@@ -88,20 +89,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final vm = context.read<SignUpViewModel>();
-    final session = context.read<LearningMemberSession>();
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
 
-    await vm.submit(CreateMemberRequest(
-      email: _emailController.text,
-      password: _passwordController.text,
-      nickname: _nicknameController.text,
-    ));
+    await vm.submit(
+      CreateMemberRequest(
+        email: _emailController.text,
+        password: _passwordController.text,
+        nickname: _nicknameController.text,
+      ),
+    );
     if (!mounted) return;
 
     if (vm.submitStatus == SubmitStatus.success && vm.createdMemberId != null) {
-      session.setMemberId(vm.createdMemberId!); // 이후 평점 요청에 사용
-      router.go('/movies');
+      messenger.showSnackBar(
+        const SnackBar(content: Text('회원가입이 완료됐어요. 로그인해 주세요.')),
+      );
+      router.go('/login');
       return;
     }
 
@@ -129,8 +133,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   constraints: const BoxConstraints(maxWidth: 560),
                   child: SingleChildScrollView(
                     child: ConstrainedBox(
-                      constraints:
-                          BoxConstraints(minHeight: constraints.maxHeight),
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -171,16 +176,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   Center(
                                     child: Column(
                                       children: [
-                                        Text('환영합니다!',
-                                            style: AppTextStyles.bodyMedium),
-                                        Text('간단한 정보만 입력하고 시작해보세요.',
-                                            style: AppTextStyles.bodyMedium),
+                                        Text(
+                                          '환영합니다!',
+                                          style: AppTextStyles.bodyMedium,
+                                        ),
+                                        Text(
+                                          '간단한 정보만 입력하고 시작해보세요.',
+                                          style: AppTextStyles.bodyMedium,
+                                        ),
                                       ],
                                     ),
                                   ),
                                   const SizedBox(height: 32),
                                   NicknameField(
-                                      controller: _nicknameController),
+                                    controller: _nicknameController,
+                                  ),
                                   const SizedBox(height: 20),
                                   EmailField(
                                     controller: _emailController,
@@ -220,8 +230,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     const SizedBox(height: 8),
                                     Text(
                                       '닉네임과 이메일 중복 확인을 완료해 주세요.',
-                                      style:
-                                          Theme.of(context).textTheme.bodySmall,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
                                     ),
                                   ],
                                   const SizedBox(height: 16),
@@ -272,9 +283,9 @@ InputDecoration _decoration({
   Color errorColor = Colors.red,
 }) {
   OutlineInputBorder border(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: color),
-      );
+    borderRadius: BorderRadius.circular(8),
+    borderSide: BorderSide(color: color),
+  );
 
   return InputDecoration(
     hintText: hint,
@@ -294,8 +305,8 @@ InputDecoration _decoration({
             ),
           )
         : available
-            ? const Icon(Icons.check_circle, color: Colors.green)
-            : null,
+        ? const Icon(Icons.check_circle, color: Colors.green)
+        : null,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide.none,
@@ -370,9 +381,9 @@ class _NicknameFieldState extends State<NicknameField> {
                     label: '중복 확인',
                     isLoading: vm.nicknameCheckStatus == CheckStatus.checking,
                     onPressed: canCheck
-                        ? () => context
-                            .read<SignUpViewModel>()
-                            .checkNickname(widget.controller.text)
+                        ? () => context.read<SignUpViewModel>().checkNickname(
+                            widget.controller.text,
+                          )
                         : null,
                   ),
                 ),
@@ -457,9 +468,9 @@ class _EmailFieldState extends State<EmailField> {
                     label: '중복 확인',
                     isLoading: vm.emailCheckStatus == CheckStatus.checking,
                     onPressed: canCheck
-                        ? () => context
-                            .read<SignUpViewModel>()
-                            .checkEmail(widget.controller.text)
+                        ? () => context.read<SignUpViewModel>().checkEmail(
+                            widget.controller.text,
+                          )
                         : null,
                   ),
                 ),
