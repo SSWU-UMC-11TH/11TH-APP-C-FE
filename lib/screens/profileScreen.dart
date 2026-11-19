@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:movielog/widgets/profile_header.dart';
 import 'package:movielog/widgets/stat_card.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -30,9 +31,40 @@ class ProfileScreen extends StatelessWidget {
                 StatCard(label: '즐겨찾기', value: '58'),
               ],
             ),
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: () => context.push('/my/ratings'),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 20,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: const Color(0xFFD9CCEB),
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '내가 등록한 평점',
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Icon(
+                      Icons.chevron_right,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
-            Text('선호하는 장르',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text('선호하는 장르', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
