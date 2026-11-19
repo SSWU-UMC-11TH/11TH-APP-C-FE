@@ -108,7 +108,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       );
     }
 
-    final canRate = context.read<MovieDetailViewModel>().memberId != null;
 
     return Scaffold(
       appBar: AppBar(title: Text(movie.title)),
@@ -163,21 +162,38 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                 Expanded(
                   child: FilledButton.icon(
                     // 가입 결과의 memberId가 없으면 비활성
-                    onPressed: canRate ? _showRatingDialog : null,
+                    onPressed: _showRatingDialog,
                     icon: const Icon(Icons.rate_review_outlined),
                     label: const Text('평점 남기기'),
                   ),
                 ),
               ],
             ),
-            if (!canRate) ...[
-              const SizedBox(height: 8),
-              Text('회원가입을 완료하면 평점을 남길 수 있어요.',
-                  style: Theme.of(context).textTheme.bodySmall),
-            ],
+                        const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _toggleFavorite,
+                    icon: Icon(
+                        isFavorite ? Icons.bookmark : Icons.bookmark_border),
+                    label: const Text('즐겨찾기'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _showRatingDialog,
+                    icon: const Icon(Icons.rate_review_outlined),
+                    label: const Text('평점 남기기'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 }
+ 
