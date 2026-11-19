@@ -1,0 +1,40 @@
+import 'package:dio/dio.dart';
+import 'package:movielog/core/storage/token_storage.dart';
+
+class AuthInterceptor extends Interceptor {
+  AuthInterceptor(this._storage);
+  final TokenStorage _storage;
+
+  // 보호 대상: MovieLog 서버의 내 정보, 평점 등록/수정/삭제만
+  bool _isProtected(RequestOptions options) {
+    final path = options.uri.path;
+    return options.uri.host == 'workbook.devnoco.com' &&
+        (path == '/v7/members/me' ||
+            path == '/v7/ratings' ||
+            path.startsWith('/v7/ratings/'));
+  }
+
+  @override
+  Future<void> onRequest(
+      RequestOptions options, RequestInterceptorHandler handler) async {
+    if (!_isProtected(options)) {
+      handler.next(options);
+      return;
+    }
+    options.headers.remove('Authorization');
+    try {
+      final token = await _storage.readAccessToken();
+      if (token != null && token.isNotEmpty) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+      handler.next(options);
+    } catch (_) {
+      // 서버 401과 기기 저장소 실패는 다른 오류
+      handler.reject(DioException(
+        requestOptions: options,
+        type: DioExceptionType.unknown,
+        error: StateError('인증 저장소를 읽지 못했습니다.'),
+      ));
+    }
+  }
+}
