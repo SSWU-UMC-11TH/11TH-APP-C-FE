@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:movielog/models/movie.dart';
+import 'package:movielog/data/models/tmdb_movie_dto.dart';
+import 'package:movielog/widgets/tmdb_poster_image.dart';
 
 class PopularMovieCard extends StatelessWidget {
-  final Movie movie;
+  final TmdbMovieDto movie;
   final int rank;
 
   const PopularMovieCard({super.key, required this.movie, required this.rank});
@@ -11,7 +12,7 @@ class PopularMovieCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.push('/movies/${movie.id}'),
+      onTap: () => context.push('/movies/${movie.id}', extra: movie),
       child: SizedBox(
         width: 140,
         child: Column(
@@ -23,11 +24,10 @@ class PopularMovieCard extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.asset(
-                      movie.posterAsset,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
-                          Container(color: Colors.grey.shade300),
+                    child: TmdbPosterImage(
+                      posterPath: movie.posterPath,
+                      width: double.infinity,
+                      height: double.infinity,
                     ),
                   ),
                   Positioned(
@@ -58,7 +58,7 @@ class PopularMovieCard extends StatelessWidget {
               children: [
                 const Icon(Icons.star, size: 14, color: Color(0xFFD4A52C)),
                 const SizedBox(width: 2),
-                Text('${movie.rating}',
+                Text(movie.voteAverage.toStringAsFixed(1),
                     style: Theme.of(context).textTheme.bodySmall),
               ],
             ),

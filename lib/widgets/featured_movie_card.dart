@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:movielog/models/movie.dart';
+import 'package:movielog/data/models/tmdb_movie_dto.dart';
+import 'package:movielog/widgets/tmdb_poster_image.dart';
 
 class FeaturedMovieCard extends StatelessWidget {
-  final Movie movie;
+  final TmdbMovieDto movie;
 
   const FeaturedMovieCard({super.key, required this.movie});
 
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
+    final subtitle = [
+      movie.releaseYear,
+      '★ ${movie.voteAverage.toStringAsFixed(1)}',
+    ].whereType<String>().join(' · ');
 
     return GestureDetector(
-      onTap: () => context.push('/movies/${movie.id}'),
+      onTap: () => context.push('/movies/${movie.id}', extra: movie),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: AspectRatio(
@@ -20,11 +25,10 @@ class FeaturedMovieCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.asset(
-                movie.posterAsset,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) =>
-                    Container(color: Colors.grey.shade800),
+              TmdbPosterImage(
+                posterPath: movie.posterPath,
+                width: double.infinity,
+                height: double.infinity,
               ),
               const DecoratedBox(
                 decoration: BoxDecoration(
@@ -57,22 +61,23 @@ class FeaturedMovieCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       movie.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 26,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    Text(
-                      '${movie.genre} · ${movie.runtime}분',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
+                    Text(subtitle,
+                        style: const TextStyle(color: Colors.white70)),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: FilledButton.icon(
-                        onPressed: () => context.push('/movies/${movie.id}'),
+                        onPressed: () =>
+                            context.push('/movies/${movie.id}', extra: movie),
                         icon: const Icon(Icons.info, size: 18),
                         label: const Text('상세보기'),
                         style: FilledButton.styleFrom(
