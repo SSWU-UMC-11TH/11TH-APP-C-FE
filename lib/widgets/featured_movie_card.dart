@@ -23,7 +23,7 @@ class FeaturedMovieCard extends StatelessWidget {
               Image.asset(
                 movie.posterAsset,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
+                errorBuilder: (_, _, _) =>
                     Container(color: Colors.grey.shade800),
               ),
               const DecoratedBox(

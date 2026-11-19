@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:movielog/widgets/AppBar.dart';
-import 'package:movielog/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
@@ -72,16 +70,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _validateForm();
   }
 
-  void _onSubmit() {
-    final isFormOk = _formKey.currentState?.validate() ?? false;
-    if (isFormOk && _agreedToTerms) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('가입 처리 중입니다.')));
-    } else if (!_agreedToTerms) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('필수 약관에 동의해주세요.')));
-    }
-  }
+  // void _onSubmit() {
+  //   final isFormOk = _formKey.currentState?.validate() ?? false;
+  //   if (isFormOk && _agreedToTerms) {
+  //     ScaffoldMessenger.of(context)
+  //         .showSnackBar(const SnackBar(content: Text('가입 처리 중입니다.')));
+  //   } else if (!_agreedToTerms) {
+  //     ScaffoldMessenger.of(context)
+  //         .showSnackBar(const SnackBar(content: Text('필수 약관에 동의해주세요.')));
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
